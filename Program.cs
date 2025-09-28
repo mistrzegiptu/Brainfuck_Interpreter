@@ -7,7 +7,7 @@
             string program =
                 "++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>.";
 
-            var interpreter = new BrainfuckInterpreter(program);
+            var interpreter = new BrainfuckInterpreter(new BrainfuckCompiler(program.ToCharArray()));
             interpreter.Run();
         }
     }

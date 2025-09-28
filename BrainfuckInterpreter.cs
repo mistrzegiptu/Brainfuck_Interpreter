@@ -11,84 +11,70 @@ namespace BrainfuckInterpreter
     {
         private const int Size = 30000;
 
-        private readonly string _program;
         private readonly char[] _array;
         private int _index = 0;
-        private readonly Dictionary<int, int> _jumps = new();
-        public BrainfuckInterpreter(string program)
+        private readonly IBrainfuckCompiler _compiler;
+
+        public BrainfuckInterpreter(IBrainfuckCompiler compiler)
         {
-            _program = program;
             _array = new char[Size];
-
-            PrecomputeJumps();
-        }
-
-        private void PrecomputeJumps()
-        {
-            var openBrackets = new Stack<int>();
-
-            for (int i = 0; i < _program.Length; i++)
-            {
-                if (_program[i] == '[')
-                {
-                    openBrackets.Push(i);
-                }
-                else if (_program[i] == ']')
-                {
-                    if (openBrackets.TryPop(out var leftIndex))
-                    {
-                        _jumps.Add(leftIndex, i);
-                        _jumps.Add(i, leftIndex);
-                    }
-                    else
-                    {
-                        throw new Exception("Program is incorrect, too many \"]\"");
-                    }
-                }
-            }
-
-            if(openBrackets.Count != 0)
-                throw new Exception("Program is incorrect, too many \"[\"");
+            _compiler = compiler;
         }
 
         public void Run()
         {
-            for (int i = 0; i < _program.Length; i++)
+            var instructions = _compiler.Compile().ToList();
+
+            for (int i = 0; i < instructions.Count; i++)
             {
-                i = ExecuteAction(_program[i], i);
+                var action = instructions[i];
+                i = ExecuteAction(action, i);
             }
         }
 
-        private int ExecuteAction(char action, int i)
+        private int ExecuteAction(BrainfuckInstruction action, int i)
         {
-            switch (_program[i])
+            switch (action.Code)
             {
-                case '>':
-                    _index = (_index + 1) % Size;
+                case BrainfuckInstructionCode.MoveRight:
+                    _index = (_index + action.Arg) % Size;
                     break;
-                case '<':
-                    _index = (_index - 1 + Size) % Size;
+                case BrainfuckInstructionCode.MoveLeft:
+                    _index = (_index - action.Arg + Size) % Size;
                     break;
-                case '+':
-                    _array[_index] = (char)((_array[_index] + 1) % 256);
+                case BrainfuckInstructionCode.Increment:
+                    _array[_index] = (char)((_array[_index] + action.Arg) % 256);
                     break;
-                case '-':
-                    _array[_index] = (char)((_array[_index] - 1 + 256) % 256);
+                case BrainfuckInstructionCode.Decrement:
+                    _array[_index] = (char)((_array[_index] - action.Arg + 256) % 256);
                     break;
-                case '.':
+                case BrainfuckInstructionCode.PrintChar:
                     Console.Write(_array[_index]);
                     break;
-                case ',':
+                case BrainfuckInstructionCode.GetChar:
                     var toPlace = Console.ReadKey(intercept: true).KeyChar;
                     _array[_index] = toPlace;
                     break;
-                case '[':
+                case BrainfuckInstructionCode.JumpLeftBracket:
                     if (_array[_index] == (char)0)
-                        i = _jumps[i];
+                        i = action.Arg;
                     break;
-                case ']':
+                case BrainfuckInstructionCode.JumpRightBracket:
                     if (_array[_index] != (char)0)
-                        i = _jumps[i];
+                        i = action.Arg;
+                    break;
+                case BrainfuckInstructionCode.SetToZero:
+                    _array[_index] = (char)0;
+                    break;
+                case BrainfuckInstructionCode.MoveRightAdd:
+                    var rightIndex = (_index + 1) % Size;
+                    _array[_index] = (char)0;
+                    _array[rightIndex] = (char)((_array[rightIndex] + action.Arg) % 256);
+                    break;
+                case BrainfuckInstructionCode.MoveRightSub:
+                    rightIndex = (_index + 1) % Size;
+                    _array[_index] = (char)0;
+                    _array[rightIndex] = (char)((_array[rightIndex] - action.Arg + 256) % 256);
                     break;
             }
 
